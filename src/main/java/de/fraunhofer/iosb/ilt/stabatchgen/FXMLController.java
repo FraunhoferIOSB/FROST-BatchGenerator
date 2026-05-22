@@ -1,0 +1,315 @@
+/*
+ * Copyright (C) 2026 Fraunhofer Institut IOSB, Fraunhoferstr. 1, D 76131
+ * Karlsruhe, Germany.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+package de.fraunhofer.iosb.ilt.stabatchgen;
+
+import com.google.gson.JsonElement;
+import de.fraunhofer.iosb.ilt.configurable.ConfigEditor;
+import de.fraunhofer.iosb.ilt.configurable.ConfigurationException;
+import de.fraunhofer.iosb.ilt.stabatchgen.model.BatchGenerator;
+import de.fraunhofer.iosb.ilt.stabatchgen.utils.ConfigFileEditor;
+import java.io.File;
+import java.io.IOException;
+import java.net.URL;
+import java.nio.file.Path;
+import java.util.Iterator;
+import java.util.List;
+import java.util.ResourceBundle;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
+import javafx.event.ActionEvent;
+import javafx.fxml.FXML;
+import javafx.fxml.Initializable;
+import javafx.scene.Node;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Button;
+import javafx.scene.control.Label;
+import javafx.scene.control.ListView;
+import javafx.scene.control.ScrollPane;
+import javafx.scene.control.SplitPane;
+import javafx.scene.input.Dragboard;
+import javafx.scene.input.TransferMode;
+import javafx.scene.layout.AnchorPane;
+import javafx.scene.layout.BorderPane;
+import javafx.stage.Window;
+import org.slf4j.LoggerFactory;
+import tools.jackson.core.JacksonException;
+
+public class FXMLController implements Initializable {
+
+    private static final org.slf4j.Logger LOGGER = LoggerFactory.getLogger(FXMLController.class);
+
+    @FXML
+    private AnchorPane paneRoot;
+    @FXML
+    private SplitPane splitPaneModel;
+    @FXML
+    private ScrollPane paneConfig;
+    @FXML
+    private BorderPane bpEntityModel;
+
+    @FXML
+    private Button buttonLoad;
+    @FXML
+    private Button buttonSave;
+    @FXML
+    private Button buttonSaveAll;
+    @FXML
+    private Button buttonClose;
+    @FXML
+    private Label labelFile;
+    @FXML
+    private ListView<FileData> listViewEntityTypes;
+    private ObservableList<FileData> entityTypeList;
+
+    private File currentPath;
+
+    @FXML
+    private void actionLoad(ActionEvent event) {
+        loadWithSelector();
+    }
+
+    @FXML
+    private void actionSave(ActionEvent event) {
+        FileData fd = listViewEntityTypes.getSelectionModel().getSelectedItem();
+        ConfigFileEditor cfe = fd.getEditor();
+        cfe.setIndent("  ");
+        cfe.saveModelWithChooser("Save Data Model", getWindow());
+        fd.updateFileName();
+        listViewEntityTypes.refresh();
+    }
+
+    @FXML
+    private void actionSaveAll(ActionEvent event) {
+        for (FileData fd : listViewEntityTypes.getItems()) {
+            ConfigFileEditor cfe = fd.getEditor();
+            try {
+                cfe.setIndent("  ");
+                cfe.saveConfigToCurrentFile();
+            } catch (JacksonException ex) {
+                LOGGER.error("Failed to parse.", ex);
+            } catch (IllegalArgumentException ex) {
+                LOGGER.error("Failed to save.", ex);
+            }
+        }
+    }
+
+    @FXML
+    private void actionAdd(ActionEvent event) {
+        ConfigFileEditor cfe = new ConfigFileEditor(BatchGenerator.class);
+        cfe.initialize();
+        addToList(cfe);
+    }
+
+    @FXML
+    private void actionClose(ActionEvent event) {
+        FileData fd = listViewEntityTypes.getSelectionModel().getSelectedItem();
+        if (fd != null) {
+            listViewEntityTypes.getItems().remove(fd);
+        }
+    }
+
+    @FXML
+    private void actionCloseAll(ActionEvent event) {
+        for (Iterator<FileData> it = listViewEntityTypes.getItems().iterator(); it.hasNext();) {
+            FileData fd = it.next();
+            it.remove();
+        }
+    }
+
+    @FXML
+    private void actionRun(ActionEvent event) {
+        if (currentPath == null) {
+            alertError("Must save first");
+            return;
+        }
+        FileData fd = listViewEntityTypes.getSelectionModel().getSelectedItem();
+        ConfigFileEditor cfe = fd.getEditor();
+        JsonElement config = cfe.getConfigEditor().getConfig();
+        BatchGenerator batchGenerator = new BatchGenerator();
+        try {
+            batchGenerator.configure(config, null, null, null);
+            final Path targetPath = currentPath.toPath().resolve("generated");
+            targetPath.toFile().mkdirs();
+            Thread t = new Thread(() -> {
+                try {
+                    batchGenerator.execute(targetPath);
+                } catch (RuntimeException | IOException ex) {
+                    LOGGER.error("Failed to write data", ex);
+                }
+            }, "generator");
+            t.start();
+        } catch (ConfigurationException ex) {
+            LOGGER.error("Failed to load configuration.", ex);
+            alertError("Failed to load configuration.", ex);
+        }
+    }
+
+    private Window getWindow() {
+        return paneRoot.getScene().getWindow();
+    }
+
+    private void loadWithSelector() {
+        ConfigFileEditor cfe = new ConfigFileEditor(BatchGenerator.class);
+        cfe.loadFromFileWithChooser("Load Entity Type", getWindow());
+        addToList(cfe);
+    }
+
+    private void loadFromFile(File file) {
+        ConfigFileEditor cfe = new ConfigFileEditor(BatchGenerator.class);
+        cfe.loadFromFile(file);
+        addToList(cfe);
+    }
+
+    private void addToList(ConfigFileEditor cfe) {
+        FileData fd = new FileData();
+        fd.setEditor(cfe);
+        fd.updateFileName();
+        entityTypeList.add(fd);
+        listViewEntityTypes.getSelectionModel().select(fd);
+    }
+
+    private void showModel(FileData file) {
+        if (file == null) {
+            paneConfig.setContent(null);
+            return;
+        }
+        LOGGER.info("Selected: {}", file);
+        replaceEditor(file.editor);
+        labelFile.setText(file.getCurrentFilePath());
+    }
+
+    private void replaceEditor(ConfigFileEditor editor) {
+        if (editor == null) {
+            paneConfig.setContent(null);
+        } else {
+            replaceEditor(editor.getConfigEditor());
+            File currentFile = editor.getCurrentFile();
+            if (currentFile != null) {
+                currentPath = currentFile.getParentFile();
+            }
+        }
+    }
+
+    private void replaceEditor(ConfigEditor<?> editor) {
+        if (editor == null) {
+            paneConfig.setContent(null);
+        } else {
+            paneConfig.setContent(editor.getGuiFactoryFx().getNode());
+        }
+    }
+
+    @Override
+    public void initialize(URL url, ResourceBundle rb) {
+        SplitPane.setResizableWithParent(listViewEntityTypes, Boolean.FALSE);
+        entityTypeList = FXCollections.observableArrayList();
+        listViewEntityTypes.setItems(entityTypeList);
+        listViewEntityTypes.getSelectionModel().selectedItemProperty().addListener((ov, oldItem, newItem) -> showModel(newItem));
+        makeDropTarget(bpEntityModel, this::loadFromFile);
+    }
+
+    public static void makeDropTarget(Node node, FileAction action) {
+        node.setOnDragOver(event -> {
+            if (event.getGestureSource() != node && event.getDragboard().hasFiles()) {
+                event.acceptTransferModes(TransferMode.COPY);
+            }
+            event.consume();
+        });
+        node.setOnDragDropped(event -> {
+            Dragboard db = event.getDragboard();
+            boolean success = false;
+            if (db.hasFiles()) {
+                List<File> files = db.getFiles();
+                for (var file : files) {
+                    action.call(file);
+                }
+                success = true;
+            }
+            event.setDropCompleted(success);
+            event.consume();
+        });
+    }
+
+    public void close() {
+        LOGGER.info("Received close, shutting down.");
+    }
+
+    private void alertError(String text) {
+        alertError(text, null);
+    }
+
+    private void alertError(String text, Exception ex) {
+        Alert alert = new Alert(Alert.AlertType.ERROR);
+        alert.setTitle(text);
+        if (ex != null) {
+            alert.setContentText(ex.getLocalizedMessage());
+        }
+        alert.showAndWait();
+    }
+
+    public static class FileData {
+
+        private String fileName;
+        private ConfigFileEditor editor;
+
+        public String getFileName() {
+            return fileName;
+        }
+
+        public File getCurrentFile() {
+            return editor.getCurrentFile();
+        }
+
+        public String getCurrentFilePath() {
+            File currentFile = editor.getCurrentFile();
+            if (currentFile == null) {
+                return "No file selected";
+            }
+            return currentFile.getAbsolutePath();
+        }
+
+        public ConfigFileEditor getEditor() {
+            return editor;
+        }
+
+        public FileData setEditor(ConfigFileEditor editor) {
+            this.editor = editor;
+            return this;
+        }
+
+        public FileData updateFileName() {
+            File currentFile = editor.getCurrentFile();
+            if (currentFile == null) {
+                fileName = "No File";
+            } else {
+                fileName = currentFile.getName();
+            }
+            return this;
+        }
+
+        @Override
+        public String toString() {
+            return fileName;
+        }
+
+    }
+
+    public static interface FileAction {
+
+        abstract public void call(File file);
+    }
+}
