@@ -246,7 +246,7 @@ public class StringHelper {
     }
 
     /**
-     * Quote the given value for use in URLs.
+     * Quote and encode the given value for use in URLs.
      *
      * @param in The object to quote.
      * @return The quoted String.
@@ -259,6 +259,22 @@ public class StringHelper {
             return "null";
         }
         return "'" + escapeForStringConstant(in.toString()) + "'";
+    }
+
+    /**
+     * Encode, but not quote, the given value for use in URLs.
+     *
+     * @param in The object to quote.
+     * @return The quoted String.
+     */
+    public static String encodeForUrl(Object in) {
+        if (in instanceof Number) {
+            return in.toString();
+        }
+        if (in == null) {
+            return "null";
+        }
+        return escapeForStringConstant(in.toString());
     }
 
     /**

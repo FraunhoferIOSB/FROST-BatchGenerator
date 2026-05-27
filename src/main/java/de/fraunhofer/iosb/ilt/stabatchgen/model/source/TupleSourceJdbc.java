@@ -134,7 +134,7 @@ public class TupleSourceJdbc implements TupleSource {
             try {
                 return resultSet.getObject(name);
             } catch (SQLException ex) {
-                LOGGER.error("Failed to get {} from tuple {}", name, resultSet, ex);
+                LOGGER.error("Failed to get {} from tuple.", name, ex);
                 return null;
             }
         }

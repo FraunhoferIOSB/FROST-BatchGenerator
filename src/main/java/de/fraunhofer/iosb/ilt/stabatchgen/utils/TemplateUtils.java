@@ -75,8 +75,12 @@ public class TemplateUtils {
 
     private static String findMatch(final String path, final String deflt, final Object source, final Quoter quoter) {
         boolean numeric = false;
+        boolean outerQuotes = false;
         final String realPath;
-        if (path.startsWith("N:")) {
+        if (path.startsWith("Q:")) {
+            outerQuotes = true;
+            realPath = path.substring(2);
+        } else if (path.startsWith("N:")) {
             numeric = true;
             realPath = path.substring(2);
         } else {
@@ -91,9 +95,14 @@ public class TemplateUtils {
                 return deflt;
             }
             if (jn.isNumber() && numeric) {
-                return jn.asText();
+                if (jn.isIntegralNumber()) {
+                    value = jn.asBigInteger();
+                } else {
+                    value = jn.asDecimal();
+                }
+            } else {
+                value = jn.asString();
             }
-            value = jn.asText();
         }
         if (value instanceof Map || value instanceof List) {
             return deflt;
@@ -101,7 +110,7 @@ public class TemplateUtils {
         if (isNullOrEmpty(Objects.toString(value, ""))) {
             return deflt;
         }
-        return quoter.quote(value, numeric);
+        return quoter.quote(value, outerQuotes);
     }
 
     public static Object getPath(String path, Object source) {
@@ -156,22 +165,27 @@ public class TemplateUtils {
         return template.asString();
     }
 
-    public static final Quoter JSON = (value, isNumeric) -> {
+    public static final Quoter JSON = (value, outerQuotes) -> {
         String result = Strings.CS.replace(Objects.toString(value), "\"", "\\\"");
         result = Strings.CS.replace(result, "\n", "\\n");
         result = StringUtils.replaceChars(result, "\r\t", null);
-        return result;
-    };
-    public static final Quoter URL = (value, isNumeric) -> {
-        if (isNumeric) {
-            return Objects.toString(value);
+        if (outerQuotes) {
+            return '"' + result + '"';
+        } else {
+            return result;
         }
-        return StringHelper.quoteForUrl(value);
+    };
+    public static final Quoter URL = (value, outerQuotes) -> {
+        if (outerQuotes) {
+            return StringHelper.quoteForUrl(value);
+        } else {
+            return StringHelper.encodeForUrl(value);
+        }
     };
     public static final Quoter NONE = (value, isNumeric) -> Objects.toString(value);
 
     public static interface Quoter {
 
-        public String quote(Object value, boolean isNumeric);
+        public String quote(Object value, boolean outerQuotes);
     }
 }
