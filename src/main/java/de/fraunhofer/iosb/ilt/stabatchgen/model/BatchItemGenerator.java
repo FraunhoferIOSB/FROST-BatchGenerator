@@ -35,11 +35,10 @@ import java.util.Set;
  */
 public class BatchItemGenerator implements AnnotatedConfigurable<Object, Object> {
 
-    private static final String BODY_TEMLATE_DEFAULT = """
-            {
-              "name": "Station",
-              "description": "A sensor station"
-            }""";
+    @ConfigurableField(editor = EditorString.class,
+            label = "IF Template", description = "The template for the IF the batch item uses.")
+    @EditorString.EdOptsString(dflt = "")
+    private String templateIf;
 
     @ConfigurableField(editor = EditorString.class,
             label = "Group", description = "The group the batch item is in.")
@@ -67,14 +66,9 @@ public class BatchItemGenerator implements AnnotatedConfigurable<Object, Object>
     @EditorClass.EdOptsClass(clazz = Header.class)
     private List<Header> headers;
 
-    @ConfigurableField(editor = EditorString.class,
-            label = "IF Template", description = "The template for the IF the batch item uses.")
-    @EditorString.EdOptsString(dflt = "")
-    private String templateIf;
-
-    @ConfigurableField(editor = EditorString.class,
+    @ConfigurableField(editor = EditorString.class, optional = true,
             label = "Body Template", description = "The template for the batch item body.")
-    @EditorString.EdOptsString(dflt = BODY_TEMLATE_DEFAULT, lines = 10)
+    @EditorString.EdOptsString(lines = 10)
     private String templateBody;
 
     public List<JsonBatchRequestItem> applyTo(Tuple tuple, Set<String> previousIds) {
