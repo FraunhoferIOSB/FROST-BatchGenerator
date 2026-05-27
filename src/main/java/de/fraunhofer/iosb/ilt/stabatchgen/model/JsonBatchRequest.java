@@ -18,7 +18,7 @@
 package de.fraunhofer.iosb.ilt.stabatchgen.model;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import de.fraunhofer.iosb.ilt.stabatchgen.utils.ClosableBlockingIterable;
+import de.fraunhofer.iosb.ilt.stabatchgen.utils.ClosableBlockingQueue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,10 +29,10 @@ public class JsonBatchRequest {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(JsonBatchRequest.class.getName());
 
-    private final ClosableBlockingIterable<JsonBatchRequestItem> requests;
+    private final ClosableBlockingQueue<JsonBatchRequestItem> requests;
 
     public JsonBatchRequest() {
-        requests = new ClosableBlockingIterable<>(10);
+        requests = new ClosableBlockingQueue<>(10);
     }
 
     public void close() {

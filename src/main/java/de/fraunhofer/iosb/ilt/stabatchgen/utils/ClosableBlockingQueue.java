@@ -29,9 +29,9 @@ import org.slf4j.LoggerFactory;
  *
  * @param <T> The type of the items in the queue.
  */
-public class ClosableBlockingIterable<T> implements Iterable<T> {
+public class ClosableBlockingQueue<T> implements Iterable<T> {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(ClosableBlockingIterable.class.getName());
+    private static final Logger LOGGER = LoggerFactory.getLogger(ClosableBlockingQueue.class.getName());
 
     private final Object[] items;
     private int count;
@@ -43,7 +43,7 @@ public class ClosableBlockingIterable<T> implements Iterable<T> {
     private final Condition canPut;
     private Iterator<T> iterator;
 
-    public ClosableBlockingIterable(int capacity) {
+    public ClosableBlockingQueue(int capacity) {
         items = new Object[capacity];
         lock = new ReentrantLock();
         canTake = lock.newCondition();
