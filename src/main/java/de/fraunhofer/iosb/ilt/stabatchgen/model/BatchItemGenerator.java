@@ -22,11 +22,14 @@ import de.fraunhofer.iosb.ilt.configurable.annotations.ConfigurableField;
 import de.fraunhofer.iosb.ilt.configurable.editor.EditorClass;
 import de.fraunhofer.iosb.ilt.configurable.editor.EditorList;
 import de.fraunhofer.iosb.ilt.configurable.editor.EditorString;
+import de.fraunhofer.iosb.ilt.configurable.editor.EditorSubclass;
+import de.fraunhofer.iosb.ilt.stabatchgen.model.conditions.Condition;
 import de.fraunhofer.iosb.ilt.stabatchgen.model.source.Tuple;
 import de.fraunhofer.iosb.ilt.stabatchgen.utils.SimpleJsonMapper;
 import de.fraunhofer.iosb.ilt.stabatchgen.utils.StringHelper;
 import de.fraunhofer.iosb.ilt.stabatchgen.utils.TemplateUtils;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 
@@ -34,6 +37,11 @@ import java.util.Set;
  * Generates a single batch request item.
  */
 public class BatchItemGenerator implements AnnotatedConfigurable<Object, Object> {
+
+    @ConfigurableField(editor = EditorSubclass.class, optional = true,
+            label = "Condition", description = "The condition for including this in the batch.")
+    @EditorSubclass.EdOptsSubclass(iface = Condition.class, shortenClassNames = true)
+    private Condition condition;
 
     @ConfigurableField(editor = EditorString.class,
             label = "IF Template", description = "The template for the IF the batch item uses.")
@@ -72,6 +80,10 @@ public class BatchItemGenerator implements AnnotatedConfigurable<Object, Object>
     private String templateBody;
 
     public List<JsonBatchRequestItem> applyTo(Tuple tuple, Set<String> previousIds) {
+        if (condition != null && !condition.resolveFor(tuple, previousIds)) {
+            return Collections.emptyList();
+        }
+
         List<JsonBatchRequestItem> result = new ArrayList<>();
         JsonBatchRequestItem item = new JsonBatchRequestItem()
                 .setAtomicityGroup(group)
