@@ -41,6 +41,8 @@ public class TemplateUtils {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(TemplateUtils.class.getName());
     private static final Pattern PLACE_HOLDER_PATTERN = Pattern.compile("\\{([^|{}\"]+)(\\|([^}\"]*))?\\}");
+    private static final String BAD_CHARS_REGEX = "[^a-zA-Z0-9_.:,;-]";
+    private static final Pattern BAD_CHARS_PATTERN = Pattern.compile(BAD_CHARS_REGEX);
 
     private TemplateUtils() {
         // Utility class
@@ -76,13 +78,15 @@ public class TemplateUtils {
     private static String findMatch(final String path, final String deflt, final Object source, final Quoter quoter) {
         boolean numeric = false;
         boolean outerQuotes = false;
+        boolean clean = false;
         final String realPath;
-        if (path.startsWith("Q:")) {
-            outerQuotes = true;
-            realPath = path.substring(2);
-        } else if (path.startsWith("N:")) {
-            numeric = true;
-            realPath = path.substring(2);
+        int idx = path.indexOf(':');
+        if (idx >= 0) {
+            realPath = path.substring(idx + 1);
+            final String options = path.substring(0, idx);
+            outerQuotes = options.contains("Q");
+            clean = options.contains("C");
+            numeric = options.contains("N");
         } else {
             realPath = path;
         }
@@ -109,6 +113,9 @@ public class TemplateUtils {
         }
         if (isNullOrEmpty(Objects.toString(value, ""))) {
             return deflt;
+        }
+        if (clean) {
+            value = String.valueOf(value).replaceAll(BAD_CHARS_REGEX, "_");
         }
         return quoter.quote(value, outerQuotes);
     }
@@ -182,7 +189,7 @@ public class TemplateUtils {
             return StringHelper.encodeForUrl(value);
         }
     };
-    public static final Quoter NONE = (value, isNumeric) -> Objects.toString(value);
+    public static final Quoter NONE = (value, outerQuotes) -> Objects.toString(value);
 
     public static interface Quoter {
 
