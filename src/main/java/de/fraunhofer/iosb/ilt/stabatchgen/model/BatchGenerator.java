@@ -51,7 +51,7 @@ public class BatchGenerator implements AnnotatedConfigurable<Object, Object> {
 
     @ConfigurableField(editor = EditorString.class,
             label = "FileName", description = "The filename to write the batch request to.")
-    @EditorString.EdOptsString(dflt = "batch-%3d")
+    @EditorString.EdOptsString(dflt = "batch-%03d.json")
     private String fileNameTemplate;
 
     @ConfigurableField(editor = EditorInt.class,
@@ -61,7 +61,7 @@ public class BatchGenerator implements AnnotatedConfigurable<Object, Object> {
 
     @ConfigurableField(editor = EditorSubclass.class,
             label = "Source", description = "The source for rows to convert")
-    @EditorSubclass.EdOptsSubclass(iface = TupleSource.class)
+    @EditorSubclass.EdOptsSubclass(iface = TupleSource.class, shortenClassNames = true)
     private TupleSource source;
 
     @ConfigurableField(editor = EditorList.class,
@@ -127,16 +127,20 @@ public class BatchGenerator implements AnnotatedConfigurable<Object, Object> {
         return jsonBatchRequest;
     }
 
-    public TupleSource getSource() {
-        return source;
+    public void setFileNameTemplate(String fileNameTemplate) {
+        this.fileNameTemplate = fileNameTemplate;
+    }
+
+    public void setItemsPerFile(int itemsPerFile) {
+        this.itemsPerFile = itemsPerFile;
+    }
+
+    public void setPrettyPrint(boolean prettyPrint) {
+        this.prettyPrint = prettyPrint;
     }
 
     public void setSource(TupleSource source) {
         this.source = source;
-    }
-
-    public List<BatchItemGenerator> getItems() {
-        return items;
     }
 
     public void setItems(List<BatchItemGenerator> items) {

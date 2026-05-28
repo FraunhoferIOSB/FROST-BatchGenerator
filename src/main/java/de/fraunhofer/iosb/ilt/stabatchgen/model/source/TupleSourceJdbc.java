@@ -105,6 +105,26 @@ public class TupleSourceJdbc implements TupleSource {
         return Collections.emptyIterator();
     }
 
+    public void setDbDriver(String dbDriver) {
+        this.dbDriver = dbDriver;
+    }
+
+    public void setDbUrl(String dbUrl) {
+        this.dbUrl = dbUrl;
+    }
+
+    public void setDbUsername(String dbUsername) {
+        this.dbUsername = dbUsername;
+    }
+
+    public void setDbPassword(String dbPassword) {
+        this.dbPassword = dbPassword;
+    }
+
+    public void setDbQuery(String dbQuery) {
+        this.dbQuery = dbQuery;
+    }
+
     private void alertError(String text, Exception ex) {
         Alert alert = new Alert(Alert.AlertType.ERROR);
         alert.setTitle(text);
@@ -177,4 +197,5 @@ public class TupleSourceJdbc implements TupleSource {
         }
 
     }
+
 }
