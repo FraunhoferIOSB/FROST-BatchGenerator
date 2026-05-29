@@ -1,0 +1,59 @@
+{
+  "prettyPrint": true,
+  "fileNameTemplate": "ThingLocations-%03d.json",
+  "itemsPerFile": 20000,
+  "source": {
+    "className": "de.fraunhofer.iosb.ilt.stabatchgen.model.source.TupleSourceJdbc",
+    "classConfig": {
+      "dbDriver": "org.postgresql.Driver",
+      "dbUrl": "jdbc:postgresql://localhost:6543/ades",
+      "dbUsername": "sensorthings",
+      "dbPassword": "ChangeMe",
+      "dbQuery": "select *,\n to_json(q.date_maj_qualito at time zone \u0027UTC\u0027)#\u003e\u003e\u0027{}\u0027 as iso_date_maj_qualito,\n to_json(q.date_min_qualito at time zone \u0027UTC\u0027)#\u003e\u003e\u0027{}\u0027 as iso_date_min_qualito,\n to_json(q.date_max_qualito at time zone \u0027UTC\u0027)#\u003e\u003e\u0027{}\u0027 as iso_date_max_qualito\nfrom ades.qualitometre q\ninner join ades.point_eau pe on q.code_bss \u003d pe.code_bss ;"
+    }
+  },
+  "items": [
+    {
+      "templateIf": "",
+      "group": "g1",
+      "templateId": "Location-{C:code_bss}",
+      "method": "GET",
+      "templateUrl": "Locations?$select\u003did\u0026$filter\u003dname eq \u0027{code_bss}\u0027"
+    },
+    {
+      "templateIf": "not $Location-{C:code_bss}",
+      "group": "g1",
+      "templateId": "Location-{C:code_bss}",
+      "method": "POST",
+      "templateUrl": "Locations",
+      "headers": [
+        {
+          "name": "Prefer",
+          "value": "return\u003dminimal"
+        }
+      ],
+      "templateBody": "{\n  \"name\": {Q:code_bss},\n  \"description\": {Q:libelle},\n  \"encodingType\": \"application/geo+json\",\n  \"location\": {\n    \"type\": \"Point\",\n    \"coordinates\": [ {N:longitude}, {N:latitude} ]\n  }\n}"
+    },
+    {
+      "templateIf": "",
+      "group": "g1",
+      "templateId": "Thing-{C:code_bss}",
+      "method": "GET",
+      "templateUrl": "Things?$select\u003did\u0026$filter\u003dname eq \u0027{code_bss}\u0027"
+    },
+    {
+      "templateIf": "not Thing-{C:code_bss}",
+      "group": "g1",
+      "templateId": "Thing-{C:code_bss}",
+      "method": "POST",
+      "templateUrl": "Things",
+      "headers": [
+        {
+          "name": "Prefer",
+          "value": "return\u003dminimal"
+        }
+      ],
+      "templateBody": "{\n  \"name\": {Q:code_bss},\n  \"description\": {Q:libelle},\n  \"properties\": {\n    \"finalite\": {Q:finalite},\n    \"date_maj_qualito\": {Q:iso_date_maj_qualito},\n    \"nb_mesures_qualito\": {Q:nb_mesures_qualito},\n    \"date_qualito\": {\n      \"min\": {Q:iso_date_min_qualito},\n      \"max\": {Q:iso_date_max_qualito}\n    }\n  },\n  \"Locations\": [{\"@id\": \"$Location-{C:code_bss}\"}]\n}"
+    }
+  ]
+}

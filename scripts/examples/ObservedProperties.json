@@ -1,0 +1,46 @@
+{
+  "prettyPrint": true,
+  "fileNameTemplate": "ObservedProperties-%03d.json",
+  "itemsPerFile": 20000,
+  "source": {
+    "className": "de.fraunhofer.iosb.ilt.stabatchgen.model.source.TupleSourceJdbc",
+    "classConfig": {
+      "dbDriver": "org.postgresql.Driver",
+      "dbUrl": "jdbc:postgresql://localhost:6543/ades",
+      "dbUsername": "sensorthings",
+      "dbPassword": "ChangeMe",
+      "dbQuery": "SELECT * \nFROM ades.ln_parametre\nLEFT JOIN ades.ln_unite AS u ON code_unite_sandre \u003d u.code_unite;"
+    }
+  },
+  "items": [
+    {
+      "templateIf": "",
+      "group": "g1",
+      "templateId": "op-{code_param}",
+      "method": "GET",
+      "templateUrl": "ObservedProperties?$select\u003did\u0026$filter\u003dproperties/code eq {code_param}"
+    },
+    {
+      "templateIf": "$op-{code_param}",
+      "group": "g1",
+      "templateId": "op-{code_param}",
+      "method": "PATCH",
+      "templateUrl": "$op-{code_param}",
+      "templateBody": "{\n  \"name\": \"{nom_param}\",\n   \"description\": \"{definition}\",\n  \"definition\": \"http://someUrl/{code_sandre_parametre}\",\n  \"properties\": {\n    \"code\": {N:code_param},\n    \"status\": {N:statut},\n    \"sandre\": {\n      \"code\": {N:code_sandre_parametre|null},\n      \"unit\": {Q:code_unite_sandre|null}\n    },\n    \"codeSubstance\": {N:code_substance|null},\n    \"fraction\": {N:code_nature_fa|null},\n    \"reference\": {Q:reference|null},\n    \"name\": {Q:nom_international_parametre|null},\n    \"type\": \"{type_parametre|unknown}\",\n    \"domain\": \"{nature_parametre|unknown}\",\n    \"range\": {\n      \"min\": {N:val_min|null},\n      \"max\": {N:val_max|null}\n    },\n    \"unit\": {\n      \"name\": {Q:libelle_unite|null},\n      \"symbol\": {Q:symbole_unite|null}\n    }\n  }\n}"
+    },
+    {
+      "templateIf": "not $op-{code_param}",
+      "group": "g1",
+      "templateId": "op-{code_param}",
+      "method": "POST",
+      "templateUrl": "ObservedProperties",
+      "headers": [
+        {
+          "name": "prefer",
+          "value": "return\u003dminimal"
+        }
+      ],
+      "templateBody": "{\n  \"name\": \"{nom_param}\",\n   \"description\": \"{definition}\",\n  \"definition\": \"http://someUrl/{code_sandre_parametre}\",\n  \"properties\": {\n    \"code\": {N:code_param},\n    \"status\": {N:statut},\n    \"sandre\": {\n      \"code\": {N:code_sandre_parametre|null},\n      \"unit\": {Q:code_unite_sandre|null}\n    },\n    \"codeSubstance\": {N:code_substance|null},\n    \"fraction\": {N:code_nature_fa|null},\n    \"reference\": {Q:reference|null},\n    \"name\": {Q:nom_international_parametre|null},\n    \"type\": \"{type_parametre|unknown}\",\n    \"domain\": \"{nature_parametre|unknown}\",\n    \"range\": {\n      \"min\": {N:val_min|null},\n      \"max\": {N:val_max|null}\n    },\n    \"unit\": {\n      \"name\": {Q:libelle_unite|null},\n      \"symbol\": {Q:symbole_unite|null}\n    }\n  }\n}"
+    }
+  ]
+}
