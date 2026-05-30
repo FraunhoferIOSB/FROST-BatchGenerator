@@ -29,13 +29,16 @@ import de.fraunhofer.iosb.ilt.stabatchgen.model.source.Tuple;
 import de.fraunhofer.iosb.ilt.stabatchgen.model.source.TupleSource;
 import de.fraunhofer.iosb.ilt.stabatchgen.utils.SimpleJsonMapper;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.zip.GZIPOutputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * Main model class for batch file generators.
@@ -48,6 +51,11 @@ public class BatchGenerator implements AnnotatedConfigurable<Object, Object> {
             label = "Pretty", description = "Should the content of the file be prettified.")
     @EditorBoolean.EdOptsBool(dflt = true)
     private boolean prettyPrint;
+
+    @ConfigurableField(editor = EditorBoolean.class,
+            label = "Compress", description = "Use GZIP compression, automatically adds .gz to the file name.")
+    @EditorBoolean.EdOptsBool(dflt = false)
+    private boolean compress;
 
     @ConfigurableField(editor = EditorString.class,
             label = "FileName", description = "The filename to write the batch request to.")
@@ -117,6 +125,10 @@ public class BatchGenerator implements AnnotatedConfigurable<Object, Object> {
 
     public JsonBatchRequest createBatch(Path directory, int batchIdx) throws IOException {
         String fileName = String.format(fileNameTemplate, batchIdx);
+        if (compress) {
+            fileName += ".gz";
+        }
+
         File file = directory.resolve(fileName).toFile();
         LOGGER.info("  Opening file {} for writing", file);
         if (!file.exists()) {
@@ -150,10 +162,23 @@ public class BatchGenerator implements AnnotatedConfigurable<Object, Object> {
     public void writeInBackground(File file, Object value) {
         Thread t = new Thread(
                 () -> {
+
+                    final ObjectMapper mapper;
                     if (prettyPrint) {
-                        SimpleJsonMapper.getPrettyMapper().writeValue(file, value);
+                        mapper = SimpleJsonMapper.getPrettyMapper();
                     } else {
-                        SimpleJsonMapper.getObjectMapper().writeValue(file, value);
+                        mapper = SimpleJsonMapper.getObjectMapper();
+                    }
+                    if (compress) {
+                        GZIPOutputStream os;
+                        try {
+                            os = new GZIPOutputStream(new FileOutputStream(file));
+                            mapper.writeValue(os, value);
+                        } catch (IOException ex) {
+                            LOGGER.error("Failed to write file {}", file, ex);
+                        }
+                    } else {
+                        mapper.writeValue(file, value);
                     }
                     LOGGER.info("  Finished writing {}", file);
                 },
