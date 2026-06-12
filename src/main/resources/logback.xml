@@ -11,10 +11,10 @@
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
             <!-- daily rollover. Make sure the path matches the one in the file element or else
             the rollover logs are placed in the working directory. -->
-            <fileNamePattern>logs/SensorThingsImporter_%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            <fileNamePattern>logs/FROST_BatchGenerator_%d{yyyy-MM-dd}.%i.log</fileNamePattern>
             <maxFileSize>50MB</maxFileSize>
-            <!-- keep 7 days' worth of history -->
-            <maxHistory>7</maxHistory>
+            <!-- keep 3 days' worth of history -->
+            <maxHistory>3</maxHistory>
             <totalSizeCap>1GB</totalSizeCap>
         </rollingPolicy>
 
@@ -24,9 +24,9 @@
         </encoder>
     </appender>
 
-    <logger name="org.reflections8.Reflections" level="${FROST_LL_REFLECTIONS}"/>
+    <logger name="org.reflections8.Reflections" level="ERROR"/>
 
-    <root level="DEBUG">
+    <root level="INFO">
         <appender-ref ref="STDOUT" />
         <appender-ref ref="FILE" />
     </root>

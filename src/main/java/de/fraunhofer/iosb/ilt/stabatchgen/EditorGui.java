@@ -35,7 +35,7 @@ public class EditorGui extends Application {
         Scene scene = new Scene(root);
         scene.getStylesheets().add("/styles/Styles.css");
 
-        stage.setTitle("FROST-Server Model Editor");
+        stage.setTitle("FROST-BatchGenerator");
         stage.setScene(scene);
         stage.show();
         stage.setOnCloseRequest(e -> controller.close());
