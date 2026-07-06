@@ -1,5 +1,6 @@
 {
   "prettyPrint": true,
+  "compress": true,
   "fileNameTemplate": "ThingLocations-%03d.json",
   "itemsPerFile": 20000,
   "source": {
@@ -9,7 +10,7 @@
       "dbUrl": "jdbc:postgresql://localhost:6543/ades",
       "dbUsername": "sensorthings",
       "dbPassword": "ChangeMe",
-      "dbQuery": "select *,\n to_json(q.date_maj_qualito at time zone \u0027UTC\u0027)#\u003e\u003e\u0027{}\u0027 as iso_date_maj_qualito,\n to_json(q.date_min_qualito at time zone \u0027UTC\u0027)#\u003e\u003e\u0027{}\u0027 as iso_date_min_qualito,\n to_json(q.date_max_qualito at time zone \u0027UTC\u0027)#\u003e\u003e\u0027{}\u0027 as iso_date_max_qualito\nfrom ades.qualitometre q\ninner join ades.point_eau pe on q.code_bss \u003d pe.code_bss ;"
+      "dbQuery": "select *,\n to_json(q.date_maj_qualito at time zone \u0027+1\u0027)#\u003e\u003e\u0027{}\u0027 as iso_date_maj_qualito,\n to_json(q.date_min_qualito at time zone \u0027+1\u0027)#\u003e\u003e\u0027{}\u0027 as iso_date_min_qualito,\n to_json(q.date_max_qualito at time zone \u0027+1\u0027)#\u003e\u003e\u0027{}\u0027 as iso_date_max_qualito\nfrom ades.qualitometre q\ninner join ades.point_eau pe on q.code_bss \u003d pe.code_bss ;"
     }
   },
   "items": [

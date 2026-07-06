@@ -1,5 +1,6 @@
 {
   "prettyPrint": true,
+  "compress": true,
   "fileNameTemplate": "ObservedProperties-%03d.json",
   "itemsPerFile": 20000,
   "source": {
