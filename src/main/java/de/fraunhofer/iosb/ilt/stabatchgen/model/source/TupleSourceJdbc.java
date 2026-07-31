@@ -23,9 +23,14 @@ import de.fraunhofer.iosb.ilt.configurable.editor.EditorString;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 import javafx.scene.control.Alert;
 import org.apache.commons.dbcp2.BasicDataSource;
 import org.slf4j.Logger;
@@ -37,6 +42,7 @@ import org.slf4j.LoggerFactory;
 public class TupleSourceJdbc implements TupleSource {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(TupleSourceJdbc.class.getName());
+    private static final String FAILED_TO_CLOSE_CONNECTION = "Exception trying to close connection.";
     private static final String FAILED_TO_CONNECT = "Failed to connect to database.";
     private static final String FAILED_TO_EXECUTE_QUERY = "Failed to execute query.";
     private static final String FAILED_TO_LOAD_DB_DRIVER = "Failed to load DB driver.";
@@ -66,7 +72,13 @@ public class TupleSourceJdbc implements TupleSource {
     @EditorString.EdOptsString(dflt = "SELECT * FROM table", lines = 5)
     private String dbQuery;
 
+    private BasicDataSource ds;
+    private Connection conn;
+
     public BasicDataSource getDataSource() {
+        if (ds != null) {
+            return ds;
+        }
         try {
             LOGGER.info("  Loading driver {}", dbDriver);
             Class.forName(dbDriver);
@@ -75,7 +87,7 @@ public class TupleSourceJdbc implements TupleSource {
             alertError(FAILED_TO_LOAD_DB_DRIVER, ex);
             return null;
         }
-        BasicDataSource ds = new BasicDataSource();
+        ds = new BasicDataSource();
         ds.setUrl(dbUrl);
         ds.setUsername(dbUsername);
         ds.setPassword(dbPassword);
@@ -83,16 +95,39 @@ public class TupleSourceJdbc implements TupleSource {
     }
 
     @Override
+    public void close() {
+        if (conn != null) {
+            try {
+                conn.close();
+            } catch (SQLException ex) {
+                LOGGER.error(FAILED_TO_CLOSE_CONNECTION, ex);
+                alertError(FAILED_TO_CLOSE_CONNECTION, ex);
+            }
+            conn = null;
+        }
+        if (ds != null) {
+            try {
+                ds.close();
+            } catch (SQLException ex) {
+                LOGGER.error(FAILED_TO_CLOSE_CONNECTION, ex);
+                alertError(FAILED_TO_CLOSE_CONNECTION, ex);
+            }
+            ds = null;
+        }
+    }
+
+    @Override
     public Iterator<Tuple> iterator() {
-        BasicDataSource ds = getDataSource();
-        Connection conn;
-        try {
-            conn = ds.getConnection();
-            conn.isValid(1);
-        } catch (SQLException ex) {
-            LOGGER.error(FAILED_TO_CONNECT, ex);
-            alertError(FAILED_TO_CONNECT, ex);
-            return Collections.emptyIterator();
+        BasicDataSource myDs = getDataSource();
+        if (conn == null) {
+            try {
+                conn = myDs.getConnection();
+                conn.isValid(1);
+            } catch (SQLException ex) {
+                LOGGER.error(FAILED_TO_CONNECT, ex);
+                alertError(FAILED_TO_CONNECT, ex);
+                return Collections.emptyIterator();
+            }
         }
         try {
             PreparedStatement stmnt = conn.prepareStatement(dbQuery);
@@ -134,65 +169,75 @@ public class TupleSourceJdbc implements TupleSource {
 
     public static class JdbcTuple implements Tuple {
 
-        private final ResultSet resultSet;
-        private boolean active;
+        private Map<String, Object> data = new HashMap<>();
 
-        public JdbcTuple(ResultSet resultSet) {
-            this.resultSet = resultSet;
-            active = true;
-        }
-
-        public void deactivate() {
-            active = false;
+        public JdbcTuple(Map<String, Object> data) {
+            this.data = data;
         }
 
         @Override
         public Object get(String name) {
-            if (!active) {
-                throw new IllegalStateException("Tuple is already deactivated.");
-            }
-            try {
-                return resultSet.getObject(name);
-            } catch (SQLException ex) {
-                LOGGER.error("Failed to get {} from tuple.", name, ex);
-                return null;
-            }
+            return data.get(name);
         }
 
     }
 
     public static class JdbcTupleIterator implements Iterator<Tuple> {
 
+        private final List<String> colNames = new ArrayList<>();
         private final ResultSet resultSet;
         private JdbcTuple current;
+        private JdbcTuple next;
 
         public JdbcTupleIterator(ResultSet resultSet) {
             this.resultSet = resultSet;
+            findColumnNames();
+            fetchNext();
+        }
+
+        private void findColumnNames() {
+            try {
+                ResultSetMetaData metaData = resultSet.getMetaData();
+                int colCount = metaData.getColumnCount();
+                for (int idx = 1; idx <= colCount; idx++) {
+                    colNames.add(metaData.getColumnName(idx));
+                }
+            } catch (SQLException ex) {
+                LOGGER.error("Failed to fetch column names.", ex);
+            }
+        }
+
+        private Map<String, Object> extractData() throws SQLException {
+            Map<String, Object> data = new HashMap<>();
+            int idx = 1;
+            for (var name : colNames) {
+                data.put(name, resultSet.getObject(idx));
+                idx++;
+            }
+            return data;
         }
 
         @Override
         public boolean hasNext() {
+            return next != null;
+        }
+
+        private void fetchNext() {
+            next = null;
             try {
-                return !resultSet.isClosed() && !resultSet.isLast();
+                if (resultSet.next()) {
+                    next = new JdbcTuple(extractData());
+                }
             } catch (SQLException ex) {
                 LOGGER.error("Failed to fetch next row.", ex);
-                return false;
             }
         }
 
         @Override
         public Tuple next() {
-            if (current != null) {
-                current.deactivate();
-            }
-            try {
-                if (!resultSet.next()) {
-                    LOGGER.error("Next returned false!");
-                }
-            } catch (SQLException ex) {
-                LOGGER.error("Failed to fetch next row.", ex);
-            }
-            current = new JdbcTuple(resultSet);
+            current = next;
+            next = null;
+            fetchNext();
             return current;
         }
 

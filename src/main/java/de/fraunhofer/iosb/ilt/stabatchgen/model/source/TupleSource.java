@@ -23,4 +23,8 @@ import de.fraunhofer.iosb.ilt.configurable.AnnotatedConfigurable;
  * A source for tuples.
  */
 public interface TupleSource extends Iterable<Tuple>, AnnotatedConfigurable<Object, Object> {
+
+    public default void close() {
+        // Does nothing by default.
+    }
 }

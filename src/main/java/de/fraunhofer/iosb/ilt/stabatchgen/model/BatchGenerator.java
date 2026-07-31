@@ -113,6 +113,7 @@ public class BatchGenerator implements AnnotatedConfigurable<Object, Object> {
             if (currentBatch != null) {
                 closeBatch(currentBatch);
             }
+            source.close();
         }
         LOGGER.info("Finished {}", fileNameTemplate);
     }
